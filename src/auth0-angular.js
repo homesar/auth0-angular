@@ -117,6 +117,7 @@
     var innerAuth0libraryConfiguration = {
       'Auth0': {
         signin: 'login',
+        signinOnly: 'signinOnly',
         signup: 'signup',
         reset: 'changePassword',
         validateUser: 'validateUser',
@@ -134,6 +135,7 @@
       },
       'Auth0Lock': {
         signin: 'show',
+        signinOnly: 'showSignin',
         signup: 'showSignup',
         reset: 'showReset',
         library: function() {
@@ -399,6 +401,36 @@
         options = getInnerLibraryConfigField('parseOptions', libName)(options);
 
         var signinMethod = getInnerLibraryMethod('signin', libName);
+        var successFn = !successCallback ? null : function(profile, idToken, accessToken, state, refreshToken) {
+          if (!idToken && !angular.isUndefined(options.loginAfterSignup) && !options.loginAfterSignup) {
+            successCallback();
+          } else {
+            onSigninOk(idToken, accessToken, state, refreshToken, profile).then(function(profile) {
+              if (successCallback) {
+                successCallback(profile, idToken, accessToken, state, refreshToken);
+              }
+            });
+          }
+        };
+
+        var errorFn = !errorCallback ? null : function(err) {
+          callHandler('loginFailure', { error: err });
+          if (errorCallback) {
+            errorCallback(err);
+          }
+        };
+
+        var signinCall = authUtils.callbackify(signinMethod, successFn, errorFn , innerAuth0libraryConfiguration[libName || config.lib].library());
+
+        signinCall(options);
+    };
+    
+    auth.signinOnly = function(options, successCallback, errorCallback, libName) {
+        options = options || {};
+        checkHandlers(options, successCallback, errorCallback);
+        options = getInnerLibraryConfigField('parseOptions', libName)(options);
+
+        var signinMethod = getInnerLibraryMethod('signinOnly', libName);
         var successFn = !successCallback ? null : function(profile, idToken, accessToken, state, refreshToken) {
           if (!idToken && !angular.isUndefined(options.loginAfterSignup) && !options.loginAfterSignup) {
             successCallback();

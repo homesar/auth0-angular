@@ -1,6 +1,6 @@
 /**
  * Angular SDK to use with Auth0
- * @version v4.0.5 - 2015-12-21
+ * @version v4.1.0 - 2016-03-13
  * @link https://auth0.com
  * @author Martin Gontovnikas
  * @license MIT License, http://www.opensource.org/licenses/MIT
@@ -114,6 +114,7 @@
       var innerAuth0libraryConfiguration = {
           'Auth0': {
             signin: 'login',
+            signinOnly: 'signinOnly',
             signup: 'signup',
             reset: 'changePassword',
             validateUser: 'validateUser',
@@ -131,6 +132,7 @@
           },
           'Auth0Lock': {
             signin: 'show',
+            signinOnly: 'showSignin',
             signup: 'showSignup',
             reset: 'showReset',
             library: function () {
@@ -371,6 +373,31 @@
             var signinCall = authUtils.callbackify(signinMethod, successFn, errorFn, innerAuth0libraryConfiguration[libName || config.lib].library());
             signinCall(options);
           };
+          auth.signinOnly = function (options, successCallback, errorCallback, libName) {
+            options = options || {};
+            checkHandlers(options, successCallback, errorCallback);
+            options = getInnerLibraryConfigField('parseOptions', libName)(options);
+            var signinMethod = getInnerLibraryMethod('signinOnly', libName);
+            var successFn = !successCallback ? null : function (profile, idToken, accessToken, state, refreshToken) {
+                if (!idToken && !angular.isUndefined(options.loginAfterSignup) && !options.loginAfterSignup) {
+                  successCallback();
+                } else {
+                  onSigninOk(idToken, accessToken, state, refreshToken, profile).then(function (profile) {
+                    if (successCallback) {
+                      successCallback(profile, idToken, accessToken, state, refreshToken);
+                    }
+                  });
+                }
+              };
+            var errorFn = !errorCallback ? null : function (err) {
+                callHandler('loginFailure', { error: err });
+                if (errorCallback) {
+                  errorCallback(err);
+                }
+              };
+            var signinCall = authUtils.callbackify(signinMethod, successFn, errorFn, innerAuth0libraryConfiguration[libName || config.lib].library());
+            signinCall(options);
+          };
           auth.signup = function (options, successCallback, errorCallback) {
             options = options || {};
             checkHandlers(options, successCallback, errorCallback);
@@ -430,6 +457,9 @@
               auth.profile = profile;
               return profile;
             });
+          };
+          auth.hide = function (callback) {
+            config.auth0lib.hide(callback);
           };
           return auth;
         }
